@@ -8444,7 +8444,7 @@ void SketchWidget::collectAllNets(QHash<ConnectorItem *, int> & indexer, QList< 
 		ConnectorItem * connectorItem = allConnectors.takeFirst();
 		QList<ConnectorItem *> connectorItems;
 		connectorItems.append(connectorItem);
-		ConnectorItem::collectEqualPotential(connectorItems, bothSides, ViewGeometry::NoFlag);
+		ConnectorItem::collectEqualPotential(connectorItems, bothSides, ViewGeometry::RatsnestFlag|ViewGeometry::NormalFlag);
 		if (connectorItems.count() <= 0) {
 			continue;
 		}
