@@ -102,17 +102,40 @@ void NgSpiceSimulator::init() {
 
 	setErrorTitle(std::nullopt);
 
-	std::vector<std::string> symbols{STRFY(ngSpice_Command), STRFY(ngSpice_Init), STRFY(ngSpice_Circ), STRFY(ngGet_Vec_Info)};
+	std::vector<std::string> symbols{STRFY(ngSpice_Command), STRFY(ngSpice_Init), STRFY(ngSpice_Circ), STRFY(ngGet_Vec_Info),
+									 STRFY(ngSpice_SetBkpt), STRFY(ngSpice_Init_Sync), STRFY(ngSpice_CurPlot), STRFY(ngSpice_AllPlots), STRFY(ngSpice_AllVecs)};
 	for (auto & symbol: symbols) {
 		m_handles[symbol] = (void *) m_library.resolve(symbol.c_str());
 	}
 	std::string previousLocale = setlocale(LC_NUMERIC, nullptr);
 	setlocale(LC_NUMERIC, "C");
-	GET_FUNC(ngSpice_Init)(&SendCharFunc, &SendStatFunc, &ControlledExitFunc, nullptr, nullptr, &BGThreadRunningFunc, nullptr);
+	GET_FUNC(ngSpice_Init)(&SendCharFunc, &SendStatFunc, &ControlledExitFunc, &SendDataFunc, &SendInitDataFunc, &BGThreadRunningFunc, nullptr);
+	//For now we do not use the external voltages or currents.
+	//int dll1 = 1;
+	//GET_FUNC(ngSpice_Init_Sync)(&VSRCData, &ISRCData, &SyncData, &dll1, nullptr);
 	setlocale(LC_NUMERIC, previousLocale.c_str());
 
 	m_isBGThreadRunning = true;
 	m_isInitialized = true;
+}
+
+/* Callback. Set the input voltages for the external voltage sources. */
+int NgSpiceSimulator::VSRCData(double* retvoltval, double acttime, char* vinstancename, int ident, void* userdata)
+{
+	return 0;
+}
+
+/* Callback. Set the input currents for the external current sources. */
+int NgSpiceSimulator::ISRCData(double* retcurrval, double acttime, char* nodename, int ident, void* userdata)
+{
+	return 0;
+}
+
+/* Callback to synchronize the diiferent ngspice threads. */
+int NgSpiceSimulator::SyncData(double acttime, double* deltatime, double olddeltatime,
+				int redostep, int ident, int location, void* userdata)
+{
+	return 0;
 }
 
 void NgSpiceSimulator::resetIsBGThreadRunning() {
@@ -174,6 +197,15 @@ std::vector<double> NgSpiceSimulator::getVecInfo(const std::string& vecName) {
 	}
 
 	return std::vector<double>();
+}
+
+bool NgSpiceSimulator::setBreakPoint(const double& breakPointTime) {
+	std::string previousLocale = setlocale(LC_NUMERIC, nullptr);
+	setlocale(LC_NUMERIC, "C");
+	std::function<bool(double)> setBkptFunc = GET_FUNC(ngSpice_SetBkpt);
+	bool b = setBkptFunc(breakPointTime);
+	setlocale(LC_NUMERIC, previousLocale.c_str());
+	return b;
 }
 
 stdx::optional<std::string> NgSpiceSimulator::errorOccured() {
@@ -243,4 +275,32 @@ int NgSpiceSimulator::BGThreadRunningFunc(bool notRunning, int libId, void*) {
 	auto simulator = getInstance();
 	simulator->m_isBGThreadRunning = !notRunning;
 	return 0;
+}
+
+QString NgSpiceSimulator::getCurrPlot(void) {
+	char * name = GET_FUNC(ngSpice_CurPlot)();
+	return QString(name);
+}
+
+QList<QString> NgSpiceSimulator::getAllPlots(void) {
+	char ** plots = GET_FUNC(ngSpice_AllPlots)();
+	QList<QString> plotList;
+	while (*plots) {
+		plotList.append(QString(*plots));
+		plots++;
+	}
+	return plotList;
+}
+
+QList<QString> NgSpiceSimulator::getAllVecs(const std::string& plotName) {
+	std::string previousLocale = setlocale(LC_NUMERIC, nullptr);
+	setlocale(LC_NUMERIC, "C");
+	char ** vecs = GET_FUNC(ngSpice_AllVecs)(UNIQ(plotName));
+	setlocale(LC_NUMERIC, previousLocale.c_str());
+	QList<QString> vecList;
+	while (*vecs) {
+		vecList.append(QString(*vecs));
+		vecs++;
+	}
+	return vecList;
 }
