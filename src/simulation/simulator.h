@@ -98,9 +98,13 @@ protected:
 	QPointer<class BreadboardSketchWidget> m_breadboardGraphicsView;
 	QPointer<class SchematicSketchWidget> m_schematicGraphicsView;
 	double m_simStartTime, m_simStepTime, m_simEndTime, m_simNumberOfSteps;
+	unsigned long m_interactionStep = 0, m_previousInteractionStep = 0;
+	QHash<QString, std::vector<double>> m_previousVoltages;
 
 	bool m_enabled = false;
 	bool m_transientSimulationEnabled = false;
+	bool m_transitorySimRunning = false;
+	unsigned long m_previousSimTime = 0;
     bool m_debugSimResult = false;
 
 	QSet<ItemBase *> itemBases;
@@ -112,6 +116,8 @@ protected:
     double m_showResultsTimerInterval;
     QElapsedTimer m_elapsedAnimationTimer;
     QElapsedTimer m_elapsedSimTotalTimer;
+
+	QString m_spiceNetlist;
 
 	static constexpr int SimDelay = 200;
 	static constexpr double HarmfulNegativeVoltage = -0.5;
